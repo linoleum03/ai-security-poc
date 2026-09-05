@@ -9,3 +9,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/settings.php';
+
+
+use App\Models\User;
+
+Route::get('/debug/user/{id}', function ($id) {
+    return User::findOrFail($id);
+})->middleware('auth');
