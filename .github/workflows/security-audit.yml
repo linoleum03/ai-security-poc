@@ -1,0 +1,102 @@
+name: AI Security Audit
+
+on:
+  push:
+    branches:
+      - ai-security/security-fix-poc
+
+permissions:
+  contents: read
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Claude Code Security Audit
+        id: security_audit
+        uses: anthropics/claude-code-action@v1
+
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          prompt: |
+            GitHubへのpushをトリガーとして、自動セキュリティ監査を実施してください。
+
+            対象リポジトリ:
+            ${{ github.repository }}
+
+            対象ブランチ:
+            ${{ github.ref_name }}
+
+            変更前コミット:
+            ${{ github.event.before }}
+
+            変更後コミット:
+            ${{ github.sha }}
+
+            今回のpushによって追加・変更された内容をセキュリティの観点から監査してください。
+
+            まず、変更前コミットと変更後コミットの差分を起点として調査してください。
+
+            ただし、差分だけを見て判断してはいけません。
+            脆弱性の有無や影響を正しく判断するために必要であれば、
+            関連するコードも調査し、認証、認可、データアクセス、
+            データフロー、セキュリティへの影響を確認してください。
+
+            特に以下の脆弱性・問題を確認してください。
+
+            - 認証の回避
+            - 認可不備
+            - IDOR（安全でない直接オブジェクト参照）
+            - SQLインジェクション
+            - コマンドインジェクション
+            - XSS
+            - CSRF
+            - SSRF
+            - 安全でないファイル処理
+            - 機密情報・個人情報の漏洩
+            - ソースコードへのシークレット埋め込み
+            - 機密情報の不適切なログ出力
+            - Laravel固有のセキュリティ問題
+            - React固有のセキュリティ問題
+
+            誤検知をできるだけ避け、
+            実際にセキュリティ上の問題となる可能性があるものだけをFindingとして報告してください。
+
+            このWorkflowは「監査のみ」です。
+
+            以下の操作は絶対に実行しないでください。
+
+            - ファイルを変更する
+            - ファイルを新規作成する
+            - commitする
+            - pushする
+            - ブランチを作成する
+            - Pull Requestを作成する
+
+            問題を発見した場合は、
+            可能な限り以下の情報を根拠として報告してください。
+
+            - 問題の概要
+            - Severity
+            - 対象ファイル
+            - 問題となっているコード・設定
+            - なぜ脆弱なのか
+            - 想定される影響
+            - 推奨される修正方法
+            - Confidence
+
+            実際に問題となる可能性があるFindingのみを返してください。
+
+          claude_args: |
+            --max-turns 15
+            --json-schema '{"type":"object","properties":{"has_findings":{"type":"boolean"},"highest_severity":{"type":"string","enum":["none","low","medium","high","critical"]},"summary":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"severity":{"type":"string"},"title":{"type":"string"},"file":{"type":"string"},"description":{"type":"string"},"evidence":{"type":"string"},"recommendation":{"type":"string"},"confidence":{"type":"number"}},"required":["severity","title","description"]}}},"required":["has_findings","highest_severity","summary","findings"]}'
+
+      - name: Show Security Findings
+        run: |
+          echo "## AI Security Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          echo '${{ steps.security_audit.outputs.structured_output }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
