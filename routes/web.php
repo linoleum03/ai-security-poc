@@ -14,3 +14,10 @@ require __DIR__.'/settings.php';
 Route::get('/debug/user', function (Request $request) {
     return $request->user();
 })->middleware('auth');
+
+
+use App\Models\User;
+
+Route::get('/debug/user/{id}', function ($id) {
+    return User::findOrFail($id);
+})->middleware('auth');
