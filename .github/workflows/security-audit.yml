@@ -13,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    env:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,6 +31,8 @@ jobs:
 
       - name: Run AI Security Audit
         shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           cat > /tmp/security-audit-prompt.txt <<'EOF'
           GitHubへのpushをトリガーとして、自動セキュリティ監査を実施してください。
