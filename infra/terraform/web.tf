@@ -87,10 +87,24 @@ resource "aws_instance" "web" {
     http_tokens   = var.vulnerable ? "optional" : "required" # vuln=IMDSv1許可 / secure=IMDSv2必須
   }
 
+  # ルートボリュームを30GBに拡張。デフォルト8GBでは composer vendor + node_modules + 各種キャッシュで
+  # npm install が ENOSPC（ディスク満杯）で落ち、以降のmigrate/seed/サービス起動まで実行されなかったため。
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+
   user_data = <<-EOF
     #!/bin/bash
     set -euo pipefail
     export HOME=/root
+
+    # t3.micro はメモリ1GB。npm run build(vite) が OOM で落ちる保険として 2GB のswapを確保する。
+    dd if=/dev/zero of=/swapfile bs=1M count=2048
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+
     dnf install -y php8.3 php8.3-cli php8.3-pdo php8.3-mbstring php8.3-xml php8.3-zip git unzip
 
     # AL2023同梱のnodejsはv18でvite-plus等が要求するNode20+/22+を満たさないため公式リポジトリから導入
